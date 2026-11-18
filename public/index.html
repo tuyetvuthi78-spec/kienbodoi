@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autodesk AutoCAD 2024 - Drawing2.dwg</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #2b2b2b;
+    color: #d4d4d4;
+    font: 11px "Segoe UI", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  .dim { color: #8c8c8c; }
+
+  /* Title bar */
+  .titlebar {
+    height: 30px; flex-shrink: 0;
+    background: #2b2b2b;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 8px;
+    border-bottom: 1px solid #1a1a1a;
+    position: relative;
+  }
+  .logo {
+    width: 22px; height: 22px; background: #d6212f; color: #fff;
+    font-weight: 700; display: flex; align-items: center; justify-content: center;
+    border-radius: 2px; font-size: 13px;
+  }
+  .qa { display: flex; gap: 8px; color: #bdbdbd; }
+  .qa span { cursor: default; }
+  .title { position: absolute; left: 50%; transform: translateX(-50%); color: #d4d4d4; font-size: 12px; white-space: nowrap; }
+  .title-right { margin-left: auto; display: flex; gap: 12px; align-items: center; color: #bdbdbd; }
+  .search { background: #3a3a3a; border: 1px solid #4a4a4a; color: #8c8c8c; padding: 3px 8px; width: 220px; font-size: 11px; }
+  .winbtn { color: #bdbdbd; width: 18px; text-align: center; }
+
+  /* Ribbon tabs */
+  .rtabs {
+    height: 24px; flex-shrink: 0;
+    background: #2b2b2b;
+    display: flex; align-items: flex-end;
+    padding-left: 6px; gap: 2px;
+  }
+  .rtab {
+    padding: 4px 10px; color: #bdbdbd; font-size: 11px;
+    cursor: default; border-top: 1px solid transparent;
+  }
+  .rtab.active { background: #3a3a3a; color: #fff; border-color: #4a4a4a #4a4a4a #3a3a3a; }
+
+  /* Ribbon panels */
+  .ribbon {
+    height: 96px; flex-shrink: 0;
+    background: #3a3a3a;
+    border-bottom: 1px solid #1a1a1a;
+    display: flex; align-items: stretch;
+    overflow-x: auto; overflow-y: hidden;
+  }
+  .panel {
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 4px 6px 2px;
+    border-right: 1px solid #2b2b2b;
+    flex-shrink: 0;
+  }
+  .panel-body { display: flex; gap: 8px; flex: 1; align-items: stretch; padding-top: 4px; }
+  .col { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .big {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 3px; color: #d4d4d4; font-size: 11px; cursor: default;
+    padding: 2px 4px; border: 1px solid transparent; border-radius: 2px; min-width: 44px;
+  }
+  .big .ico { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #cfd6dd; }
+  .small { display: flex; align-items: center; gap: 4px; color: #d4d4d4; font-size: 11px; padding: 1px 4px; cursor: default; white-space: nowrap; }
+  .small .ico { width: 14px; text-align: center; color: #9fb4c7; }
+  .big.act { cursor: pointer; }
+  .big.act:hover:not(.off) { background: #4b4b4b; border-color: #5a5a5a; }
+  .big.off { opacity: .4; cursor: default; }
+  .ptitle { color: #8c8c8c; font-size: 11px; text-align: center; padding-bottom: 1px; }
+  .dd { background: #2b2b2b; border: 1px solid #555; color: #d4d4d4; padding: 2px 6px; font-size: 11px; min-width: 120px; }
+  .sep { width: 1px; background: #4a4a4a; align-self: stretch; margin: 0 2px; }
+
+  /* Doc tabs */
+  .doctabs {
+    height: 24px; flex-shrink: 0;
+    background: #2b2b2b;
+    display: flex; align-items: stretch; gap: 1px;
+    padding-left: 6px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .doc {
+    padding: 4px 10px; background: #3a3a3a; color: #bdbdbd; font-size: 11px;
+    display: flex; align-items: center; gap: 8px; border-top: 1px solid #4a4a4a;
+  }
+  .doc.active { background: #4a4a4a; color: #fff; }
+  .plus { color: #bdbdbd; padding: 4px 8px; }
+
+  /* Viewport */
+  .vp {
+    flex: 1; min-height: 0;
+    position: relative;
+    background: #212830;
+    overflow: hidden;
+  }
+  .scroller { position: absolute; inset: 0; overflow: auto; }
+  canvas { display: block; cursor: crosshair; }
+  .vlabel {
+    position: absolute; top: 6px; left: 8px;
+    color: #bdbdbd; font-size: 11px;
+    pointer-events: none;
+  }
+  .viewcube {
+    position: absolute; top: 40px; right: 30px;
+    width: 110px; height: 110px;
+    pointer-events: none;
+  }
+  .viewcube .ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle, rgba(60,70,80,0) 40%, rgba(90,100,110,0.35) 41%, rgba(90,100,110,0.35) 62%, rgba(60,70,80,0) 63%);
+  }
+  .viewcube .face {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px; height: 50px; background: #c8c8c8; color: #333;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; border: 1px solid #888;
+  }
+  .viewcube .c { position: absolute; color: #bdbdbd; font-size: 12px; }
+  .viewcube .N { left: 50%; top: 0; transform: translateX(-50%); }
+  .viewcube .S { left: 50%; bottom: 0; transform: translateX(-50%); }
+  .viewcube .E { right: 0; top: 50%; transform: translateY(-50%); }
+  .viewcube .W { left: 0; top: 50%; transform: translateY(-50%); }
+  .wcs { position: absolute; right: 22px; top: 150px; color: #bdbdbd; font-size: 10px; pointer-events: none; }
+
+  /* Command line */
+  .cmd {
+    height: 74px; flex-shrink: 0;
+    background: #2b2b2b;
+    border-top: 1px solid #1a1a1a;
+    padding: 4px 6px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px; color: #d4d4d4;
+    overflow: hidden;
+  }
+  .cmd .log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; color: #bdbdbd; }
+  .cmd .prompt { display: flex; gap: 6px; margin-top: 2px; }
+  .cmd .prompt .lbl { color: #d4d4d4; }
+  .cmd .prompt .val { color: #ffffff; }
+
+  /* Status bar */
+  .statusbar {
+    height: 30px; flex-shrink: 0;
+    background: #2b2b2b;
+    border-top: 1px solid #1a1a1a;
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 6px;
+    font-size: 11px;
+    overflow: hidden;
+  }
+  .sbtab {
+    padding: 4px 10px; color: #bdbdbd; background: #3a3a3a; border: 1px solid #4a4a4a;
+    cursor: default;
+  }
+  .sbtab.active { background: #4a4a4a; color: #fff; }
+  .coords { font-family: Consolas, "Courier New", monospace; color: #e8e8e8; padding: 0 10px; min-width: 120px; }
+  .tog {
+    width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+    color: #9fb4c7; border: 1px solid transparent; font-size: 12px;
+  }
+  .tog.on { background: #4b5560; border-color: #5a6670; color: #ffffff; }
+  .scorebox { margin-left: auto; color: #bdbdbd; padding-right: 8px; white-space: nowrap; }
+  .scale { color: #d4d4d4; padding: 0 6px; }
+</style>
+</head>
+<body>
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="logo">A</div>
+    <div class="qa">
+      <span>▾</span><span>🗋</span><span>🗁</span><span>🖫</span><span>⎙</span><span>↶</span><span>↷</span>
+    </div>
+    <div style="color:#4aa3ff">✈ Share</div>
+    <div class="title">Autodesk AutoCAD 2024 &nbsp; Drawing2.dwg</div>
+    <div class="title-right">
+      <input class="search" placeholder="Type a keyword or phrase" disabled />
+      <span>cdsrevit008</span>
+      <span class="winbtn">–</span><span class="winbtn">❐</span><span class="winbtn">✕</span>
+    </div>
+  </div>
+
+  <!-- Ribbon tabs -->
+  <div class="rtabs">
+    <div class="rtab active">Home</div>
+    <div class="rtab">Insert</div>
+    <div class="rtab">Annotate</div>
+    <div class="rtab">Parametric</div>
+    <div class="rtab">View</div>
+    <div class="rtab">Manage</div>
+    <div class="rtab">Output</div>
+    <div class="rtab">Add-ins</div>
+    <div class="rtab">Collaborate</div>
+    <div class="rtab">Featured Apps</div>
+    <div class="rtab">ATool</div>
+    <div class="rtab">Express Tools</div>
+    <div class="rtab">Smart</div>
+    <div class="rtab">ModPlus</div>
+  </div>
+
+  <!-- Ribbon panels -->
+  <div class="ribbon">
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">╱</div>Line</div>
+        <div class="big"><div class="ico">⌒</div>Polyline</div>
+        <div class="big"><div class="ico">◯</div>Circle</div>
+        <div class="big"><div class="ico">◠</div>Arc</div>
+        <div class="col">
+          <div class="small">▭ Rectangle</div>
+          <div class="small">◠ Ellipse</div>
+          <div class="small">▨ Hatch</div>
+        </div>
+      </div>
+      <div class="ptitle">Draw ▾</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="col">
+          <div class="small"><span class="ico">✥</span>Move</div>
+          <div class="small"><span class="ico">⟳</span>Copy</div>
+          <div class="small"><span class="ico">⇆</span>Stretch</div>
+        </div>
+        <div class="col">
+          <div class="small"><span class="ico">↻</span>Rotate</div>
+          <div class="small"><span class="ico">⧗</span>Mirror</div>
+          <div class="small"><span class="ico">⊞</span>Scale</div>
+        </div>
+        <div class="col">
+          <div class="small"><span class="ico">✂</span>Trim</div>
+          <div class="small"><span class="ico">◜</span>Fillet</div>
+          <div class="small"><span class="ico">⊞</span>Array</div>
+        </div>
+      </div>
+      <div class="ptitle">Modify ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">A</div>Text</div>
+        <div class="big"><div class="ico">⟷</div>Dimension</div>
+        <div class="col">
+          <div class="small"><span class="ico">⊢</span>Linear</div>
+          <div class="small"><span class="ico">↗</span>Leader</div>
+          <div class="small"><span class="ico">▦</span>Table</div>
+        </div>
+      </div>
+      <div class="ptitle">Annotation ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">▤</div>Layer<br>Properties</div>
+        <div class="col">
+          <div class="dd">0</div>
+          <div class="small"><span class="ico">☀</span>Make Current</div>
+          <div class="small"><span class="ico">≋</span>Match Layer</div>
+        </div>
+      </div>
+      <div class="ptitle">Layers ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">⊕</div>Insert</div>
+        <div class="col">
+          <div class="small"><span class="ico">✎</span>Create</div>
+          <div class="small"><span class="ico">✎</span>Edit</div>
+          <div class="small"><span class="ico">✎</span>Edit Attributes</div>
+        </div>
+      </div>
+      <div class="ptitle">Block ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">⌖</div>Match<br>Properties</div>
+        <div class="col">
+          <div class="dd">ByLayer</div>
+          <div class="dd">ByLayer</div>
+          <div class="dd">ByLayer</div>
+        </div>
+      </div>
+      <div class="ptitle">Properties ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">✱</div>Group</div>
+      </div>
+      <div class="ptitle">Groups ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">📏</div>Measure</div>
+      </div>
+      <div class="ptitle">Utilities ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big act" id="copy"><div class="ico">📋</div>Sao chép<br>link</div>
+        <div class="big act off" id="again"><div class="ico">↺</div>Ván mới</div>
+      </div>
+      <div class="ptitle">Clipboard ▾</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="big"><div class="ico">⬚</div>Base</div>
+      </div>
+      <div class="ptitle">View ▾</div>
+    </div>
+  </div>
+
+  <!-- Document tabs -->
+  <div class="doctabs">
+    <div class="doc">Start</div>
+    <div class="doc active">Drawing2* <span>✕</span></div>
+    <div class="plus">+</div>
+  </div>
+
+  <!-- Viewport -->
+  <div class="vp">
+    <div class="scroller" id="scroller"><canvas id="cv"></canvas></div>
+    <div class="vlabel">[−][Top][2D Wireframe]</div>
+    <div class="viewcube">
+      <div class="ring"></div>
+      <div class="c N">N</div><div class="c S">S</div>
+      <div class="c E">E</div><div class="c W">W</div>
+      <div class="face">TOP</div>
+    </div>
+    <div class="wcs">WCS</div>
+  </div>
+
+  <!-- Command line -->
+  <div class="cmd">
+    <div class="log" id="log"></div>
+    <div class="prompt"><span class="lbl">Command:</span><span class="val" id="prompt"></span></div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div class="sbtab active">Model</div>
+    <div class="sbtab">Layout1</div>
+    <div class="sbtab">Layout2</div>
+    <div class="sbtab" style="border:none;background:transparent">+</div>
+    <div class="coords" id="coord">X: --, Y: --</div>
+    <div class="tog on">▦</div>
+    <div class="tog">⋯</div>
+    <div class="tog on">⌐</div>
+    <div class="tog on">∟</div>
+    <div class="tog">⟳</div>
+    <div class="tog">⬚</div>
+    <div class="scale">1:1 / 100%</div>
+    <div class="tog">⚙</div>
+    <div class="scorebox" id="score"></div>
+  </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const scroller = $("scroller"), cv = $("cv"), ctx = cv.getContext("2d");
+  const logEl = $("log"), promptEl = $("prompt"), coordEl = $("coord");
+  const scoreEl = $("score"), againBtn = $("again"), copyBtn = $("copy");
+
+  const N = 50, CELL = 20, SIZE = N * N;
+  const COL = { bg: "#212830", grid: "#2c3540", x: "#e8e8e8", o: "#e8c547",
+                hover: "#7f8c99", win: "rgba(255,255,255,0.10)", last: "#ffffff" };
+  cv.width = N * CELL + 1;
+  cv.height = N * CELL + 1;
+
+  // Tên phòng lấy từ phần sau dấu # của link
+  let room = location.hash.slice(1).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
+  if (!room) {
+    room = Math.random().toString(36).slice(2, 8);
+    location.hash = room;
+  }
+
+  let state = null, seat = null, hover = -1, centered = false;
+
+  function log(text) {
+    const d = document.createElement("div");
+    d.textContent = text;
+    logEl.appendChild(d);
+    while (logEl.children.length > 2) logEl.removeChild(logEl.firstChild);
+  }
+
+  const socket = io();
+  socket.on("connect", () => {
+    log("Đã kết nối phòng " + room + ".");
+    socket.emit("join", room);
+  });
+  socket.on("disconnect", () => log("Mất kết nối, đang thử lại..."));
+  socket.on("seat", s => { seat = s; render(); });
+  socket.on("state", s => { state = s; render(); });
+
+  function draw() {
+    ctx.fillStyle = COL.bg;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const p = i * CELL + 0.5;
+      ctx.moveTo(p, 0); ctx.lineTo(p, N * CELL);
+      ctx.moveTo(0, p); ctx.lineTo(N * CELL, p);
+    }
+    ctx.stroke();
+
+    if (hover >= 0) {
+      const r = Math.floor(hover / N), c = hover % N;
+      ctx.strokeStyle = COL.hover; ctx.lineWidth = 1;
+      ctx.strokeRect(c * CELL + 1.5, r * CELL + 1.5, CELL - 2, CELL - 2);
+    }
+
+    if (!state) return;
+    const winSet = new Set(state.winLine || []);
+    const s = CELL * 0.32;
+    for (let i = 0; i < SIZE; i++) {
+      const v = state.board[i];
+      if (!v) continue;
+      const r = Math.floor(i / N), c = i % N;
+      const x = c * CELL + CELL / 2, y = r * CELL + CELL / 2;
+      if (winSet.has(i)) {
+        ctx.fillStyle = COL.win;
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
+      }
+      if (v === "X") {
+        ctx.strokeStyle = COL.x; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s);
+        ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = COL.o; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (i === state.last) {
+        ctx.strokeStyle = COL.last; ctx.lineWidth = 1;
+        ctx.strokeRect(c * CELL + 2.5, r * CELL + 2.5, CELL - 5, CELL - 5);
+      }
+    }
+  }
+
+  function render() {
+    if (!state) { draw(); return; }
+    const seated = (state.seats.X ? 1 : 0) + (state.seats.O ? 1 : 0);
+    let text;
+    if (!seat) text = seated === 2 ? "Phòng đã đủ 2 người. Bạn đang xem." : "Đang vào phòng...";
+    else if (seated < 2) text = "Chờ bạn bè. Gửi link cho họ.";
+    else if (state.winner === "draw") text = "Hòa.";
+    else if (state.winner) text = state.winner === seat ? "Bạn thắng." : "Bạn thua.";
+    else text = state.turn === seat ? "Lượt của bạn." : "Chờ đối thủ...";
+    promptEl.textContent = text;
+
+    scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}  ·  Hòa ${state.draws}`;
+    const canRematch = !!(seat && state.winner);
+    againBtn.classList.toggle("off", !canRematch);
+    againBtn.dataset.enabled = canRematch ? "1" : "0";
+    draw();
+
+    if (!centered) {
+      centered = true;
+      requestAnimationFrame(() => {
+        scroller.scrollLeft = (cv.width - scroller.clientWidth) / 2;
+        scroller.scrollTop = (cv.height - scroller.clientHeight) / 2;
+      });
+    }
+  }
+
+  cv.addEventListener("mousemove", e => {
+    const r = cv.getBoundingClientRect();
+    const c = Math.floor((e.clientX - r.left) / CELL);
+    const rr = Math.floor((e.clientY - r.top) / CELL);
+    if (c < 0 || c >= N || rr < 0 || rr >= N) {
+      hover = -1; coordEl.textContent = "X: --, Y: --";
+    } else {
+      hover = rr * N + c;
+      coordEl.textContent = `X: ${c + 1}, Y: ${rr + 1}`;
+    }
+    draw();
+  });
+  cv.addEventListener("mouseleave", () => {
+    hover = -1; coordEl.textContent = "X: --, Y: --"; draw();
+  });
+  cv.addEventListener("click", () => {
+    if (hover < 0 || !state) return;
+    if (!seat) { log("Bạn đang xem, không có chỗ để đánh."); return; }
+    if (state.winner) return;
+    if (state.turn !== seat) { log("Chưa đến lượt bạn."); return; }
+    if (state.board[hover]) { log("Ô này đã có quân."); return; }
+    const row = Math.floor(hover / N) + 1, col = (hover % N) + 1;
+    log(`Đặt ${seat} tại (${col}, ${row})`);
+    socket.emit("move", hover);
+  });
+
+  againBtn.addEventListener("click", () => {
+    if (againBtn.dataset.enabled === "1") socket.emit("rematch");
+  });
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      log("Đã sao chép link vào clipboard.");
+    } catch (e) { log("Không sao chép được link."); }
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>
