@@ -226,7 +226,7 @@
       <span>▾</span><span>🗋</span><span>🗁</span><span>🖫</span><span>⎙</span><span>↶</span><span>↷</span>
     </div>
     <div style="color:#4aa3ff">✈ Share</div>
-    <div class="title">Autodesk AutoCAD 2024 &nbsp; Drawing2.dwg</div>
+    <div class="title" id="titleText">Autodesk AutoCAD 2024 &nbsp; Drawing2.dwg</div>
     <div class="title-right">
       <input class="search" placeholder="Type a keyword or phrase" disabled />
       <span id="pid"></span>
@@ -369,8 +369,8 @@
 
     <div class="panel">
       <div class="panel-body">
-        <div class="big act" id="copy"><div class="ico">📋</div>Sao chép<br>link</div>
-        <div class="big act off" id="again"><div class="ico">↺</div>Ván mới</div>
+        <div class="big act" id="copy"><div class="ico">📋</div>Copy<br>Link</div>
+        <div class="big act off" id="again"><div class="ico">↺</div>New Game</div>
       </div>
       <div class="ptitle">Clipboard ▾</div>
     </div>
@@ -379,9 +379,9 @@
 
     <div class="panel">
       <div class="panel-body">
-        <div class="big act" id="lobby"><div class="ico">⌂</div>Phòng</div>
-        <div class="big act" id="gotoLast"><div class="ico">◎</div>Nước cuối</div>
-        <div class="big act" id="fitAll"><div class="ico">⤢</div>Vừa bàn</div>
+        <div class="big act" id="lobby"><div class="ico">⌂</div>Rooms</div>
+        <div class="big act" id="gotoLast"><div class="ico">◎</div>Last Move</div>
+        <div class="big act" id="fitAll"><div class="ico">⤢</div>Zoom Extents</div>
       </div>
       <div class="ptitle">View ▾</div>
     </div>
@@ -602,6 +602,7 @@
         log(`Đối thủ đánh tại (${c}, ${r})`);
       }
     }
+    if (state.title) $("titleText").textContent = "Autodesk AutoCAD 2024   ·   " + state.title;
     promptEl.textContent = statusText();
     scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}`;
 
@@ -767,7 +768,7 @@
       row.className = "lrow";
       const info = document.createElement("span");
       const who = [r.names.X, r.names.O].filter(Boolean).join(" vs ") || "chưa có ai";
-      info.textContent = `${r.id}  ·  ${r.players}/2 người chơi (${who})  ·  ${r.viewers} trong phòng`;
+      info.textContent = `${r.title}  [${r.id}]  ·  ${r.players}/2 người chơi (${who})  ·  ${r.viewers} trong phòng`;
       const btn = document.createElement("button");
       btn.textContent = "Vào";
       btn.onclick = () => gotoRoom(r.id);
@@ -785,7 +786,11 @@
   $("lobby").addEventListener("click", openLobby);
   $("lclose").addEventListener("click", closeLobby);
   $("lrefresh").addEventListener("click", requestList);
-  $("lcreate").addEventListener("click", () => socket.emit("create", id => gotoRoom(id)));
+  $("lcreate").addEventListener("click", () => {
+    const n = prompt("Tên phòng:", "Phòng mới");
+    if (n === null) return;
+    socket.emit("create", { name: n.trim() || "Phòng mới" }, id => gotoRoom(id));
+  });
   $("lgo").addEventListener("click", () => {
     const id = $("lcodeInput").value.trim().replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
     if (id) gotoRoom(id);
