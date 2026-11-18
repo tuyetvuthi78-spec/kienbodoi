@@ -66,6 +66,7 @@ function publicState(r) {
     seatStatus: { X: seatStatus(r, "X"), O: seatStatus(r, "O") },
     names: { X: r.seats.X ? r.seats.X.name : null, O: r.seats.O ? r.seats.O.name : null },
     wins: r.wins,
+    title: r.title,
   };
 }
 
@@ -223,10 +224,13 @@ io.on("connection", socket => {
   });
 
   // Tạo mã phòng ngẫu nhiên, chưa ai vào thì chưa hiện trong danh sách
-  socket.on("create", cb => {
+  socket.on("create", (payload, cb) => {
+    if (typeof payload === "function") { cb = payload; payload = {}; }
     let id;
     do { id = Math.random().toString(36).slice(2, 8); } while (rooms.has(id));
-    rooms.set(id, newRoom());
+    const room = newRoom();
+    room.title = String((payload && payload.name) || "Phòng mới").trim().slice(0, 30) || "Phòng mới";
+    rooms.set(id, room);
     if (typeof cb === "function") cb(id);
   });
 
@@ -240,6 +244,7 @@ io.on("connection", socket => {
       out.push({
         id,
         viewers,
+        title: r.title || id,
         players: (r.seats.X ? 1 : 0) + (r.seats.O ? 1 : 0),
         names: { X: r.seats.X ? r.seats.X.name : null, O: r.seats.O ? r.seats.O.name : null },
       });
