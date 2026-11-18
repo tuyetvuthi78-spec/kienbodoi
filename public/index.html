@@ -98,15 +98,15 @@
   .doc.active { background: #4a4a4a; color: #fff; }
   .plus { color: #bdbdbd; padding: 4px 8px; }
 
-  /* Viewport */
+  /* Viewport: bàn vô hạn, không có thanh cuộn */
   .vp {
     flex: 1; min-height: 0;
     position: relative;
     background: #212830;
     overflow: hidden;
   }
-  .scroller { position: absolute; inset: 0; overflow: auto; }
-  canvas { display: block; margin: auto; cursor: crosshair; }
+  .scroller { position: absolute; inset: 0; overflow: hidden; }
+  canvas { display: block; cursor: crosshair; }
   .vlabel {
     position: absolute; top: 6px; left: 8px;
     color: #bdbdbd; font-size: 11px;
@@ -165,7 +165,7 @@
     cursor: default;
   }
   .sbtab.active { background: #4a4a4a; color: #fff; }
-  .coords { font-family: Consolas, "Courier New", monospace; color: #e8e8e8; padding: 0 10px; min-width: 120px; }
+  .coords { font-family: Consolas, "Courier New", monospace; color: #e8e8e8; padding: 0 10px; min-width: 140px; }
   .tog {
     width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
     color: #9fb4c7; border: 1px solid transparent; font-size: 12px;
@@ -173,26 +173,35 @@
   .tog.on { background: #4b5560; border-color: #5a6670; color: #ffffff; }
   .scorebox { margin-left: auto; color: #bdbdbd; padding-right: 8px; white-space: nowrap; }
   .scale { color: #d4d4d4; padding: 0 6px; }
+
+  /* Thông báo nổi trong vùng vẽ */
+  .toast {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: #3a3a3a; color: #ffffff; border: 1px solid #5a5a5a;
+    padding: 6px 14px; border-radius: 4px; white-space: nowrap;
+    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 5;
+  }
+
+  /* Hộp chọn phòng */
+  .lobby-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    align-items: center; justify-content: center; z-index: 10; }
+  .lobby { background: #2b2b2b; border: 1px solid #4a4a4a; width: min(480px, 92vw);
+    padding: 12px 14px; color: #d4d4d4; font: 12px "Segoe UI", Arial, sans-serif; }
+  .lobby .lhead { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .lobby .lhead span { cursor: pointer; color: #bdbdbd; }
+  .lobby .lpid { margin: 8px 0; color: #8c8c8c; }
+  .lobby .lactions, .lobby .lcode { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+  .lobby button { background: #3a3a3a; color: #d4d4d4; border: 1px solid #4a4a4a; padding: 4px 10px; cursor: pointer; font: inherit; }
+  .lobby button:hover { background: #4b4b4b; }
+  .lobby input { background: #1e2227; color: #d4d4d4; border: 1px solid #4a4a4a; padding: 4px 8px; width: 200px; font: inherit; }
+  .lobby .llist { max-height: 300px; overflow: auto; margin-top: 8px; border-top: 1px solid #3a3a3a; }
+  .lobby .lrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #3a3a3a; }
+  .lobby .lempty { color: #8c8c8c; padding: 10px 0; }
 </style>
 </head>
 <body>
 
-  <style>
-    .lobby-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
-      align-items: center; justify-content: center; z-index: 10; }
-    .lobby { background: #2b2b2b; border: 1px solid #4a4a4a; width: min(480px, 92vw);
-      padding: 12px 14px; color: #d4d4d4; font: 12px "Segoe UI", Arial, sans-serif; }
-    .lobby .lhead { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-    .lobby .lhead span { cursor: pointer; color: #bdbdbd; }
-    .lobby .lpid { margin: 8px 0; color: #8c8c8c; }
-    .lobby .lactions, .lobby .lcode { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
-    .lobby button { background: #3a3a3a; color: #d4d4d4; border: 1px solid #4a4a4a; padding: 4px 10px; cursor: pointer; font: inherit; }
-    .lobby button:hover { background: #4b4b4b; }
-    .lobby input { background: #1e2227; color: #d4d4d4; border: 1px solid #4a4a4a; padding: 4px 8px; width: 200px; font: inherit; }
-    .lobby .llist { max-height: 300px; overflow: auto; margin-top: 8px; border-top: 1px solid #3a3a3a; }
-    .lobby .lrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #3a3a3a; }
-    .lobby .lempty { color: #8c8c8c; padding: 10px 0; }
-  </style>
+  <!-- Hộp chọn phòng -->
   <div id="lobbyBox" class="lobby-bg">
     <div class="lobby">
       <div class="lhead"><strong>Chọn phòng</strong><span id="lclose">✕</span></div>
@@ -387,6 +396,7 @@
   <div class="vp">
     <div class="scroller" id="scroller"><canvas id="cv"></canvas></div>
     <div class="vlabel">[−][Top][2D Wireframe]</div>
+    <div class="toast" id="toast"></div>
     <div class="viewcube">
       <div class="ring"></div>
       <div class="c N">N</div><div class="c S">S</div>
@@ -415,7 +425,7 @@
     <div class="tog on">∟</div>
     <div class="tog">⟳</div>
     <div class="tog">⬚</div>
-    <div class="scale">1:1 / 100%</div>
+    <div class="scale" id="scale">Zoom 100%</div>
     <div class="tog">⚙</div>
     <div class="scorebox" id="score"></div>
   </div>
@@ -427,17 +437,19 @@
   const scroller = $("scroller"), cv = $("cv"), ctx = cv.getContext("2d");
   const logEl = $("log"), promptEl = $("prompt"), coordEl = $("coord");
   const scoreEl = $("score"), againBtn = $("again"), copyBtn = $("copy");
+  const scaleEl = $("scale"), pidEl = $("pid");
 
-  const N = 50, SIZE = N * N;
-  let CELL = 20;                 // kích thước một ô (px), thay đổi khi zoom
-  const MIN_CELL = 6, MAX_CELL = 48;
   const COL = { bg: "#212830", grid: "#2c3540", x: "#e8e8e8", o: "#e8c547",
                 hover: "#7f8c99", win: "rgba(255,255,255,0.10)", last: "#ffffff" };
-  function applySize() {
-    cv.width = N * CELL + 1;
-    cv.height = N * CELL + 1;
-  }
-  applySize();
+  const BASE_CELL = 20;
+  const MIN_CELL = 6, MAX_CELL = 48;
+
+  // Trạng thái hiển thị: kích thước ô (px) và toạ độ ô ở góc trên bên trái màn hình
+  let CELL = BASE_CELL;
+  let originC = 0, originR = 0;
+  let hoverC = null, hoverR = null;
+  let state = null, seat = null;
+  let centered = false;
 
   // Mã phòng lấy từ phần sau dấu # của link. Không có thì mở danh sách phòng.
   let room = location.hash.slice(1).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
@@ -449,13 +461,10 @@
     localStorage.setItem("caro-token", token);
   }
 
-  // ID người chơi: 6 ký tự từ mã trình duyệt, giữ nguyên sau mỗi lần tải lại
+  // ID người chơi: 6 ký tự từ mã trình duyệt
   const playerId = () => token.replace(/-/g, "").slice(0, 6).toUpperCase();
   let name = localStorage.getItem("caro-name") || ("Người chơi " + playerId());
-  const pidEl = $("pid");
   pidEl.textContent = "ID: " + playerId() + "  ·  " + name;
-
-  let state = null, seat = null, hover = -1, centered = false;
 
   function log(text) {
     const d = document.createElement("div");
@@ -478,22 +487,137 @@
   });
   socket.on("state", s => { state = s; render(); });
 
-  // ----- Zoom kiểu AutoCAD -----
-  // Giữ điểm dưới con trỏ đứng yên khi zoom. ax, ay là toạ độ trong vùng vẽ.
+  let toastTimer = null;
+  function toast(text) {
+    const t = $("toast");
+    t.textContent = text;
+    t.style.opacity = "1";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.opacity = "0"; }, 4000);
+  }
+  socket.on("notice", n => {
+    log(n.text);
+    toast(n.text);
+  });
+
+  // ----- Vẽ -----
+  function sizeCanvas() {
+    const w = scroller.clientWidth, h = scroller.clientHeight;
+    if (cv.width !== w) cv.width = w;
+    if (cv.height !== h) cv.height = h;
+  }
+
+  function visibleRange() {
+    const w = cv.width / CELL, h = cv.height / CELL;
+    return { c0: Math.floor(originC), c1: Math.ceil(originC + w), r0: Math.floor(originR), r1: Math.ceil(originR + h) };
+  }
+
+  function draw() {
+    sizeCanvas();
+    ctx.fillStyle = COL.bg;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    const v = visibleRange();
+
+    // Lưới
+    ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let c = v.c0; c <= v.c1; c++) {
+      const x = Math.round((c - originC) * CELL) + 0.5;
+      ctx.moveTo(x, 0); ctx.lineTo(x, cv.height);
+    }
+    for (let r = v.r0; r <= v.r1; r++) {
+      const y = Math.round((r - originR) * CELL) + 0.5;
+      ctx.moveTo(0, y); ctx.lineTo(cv.width, y);
+    }
+    ctx.stroke();
+
+    // Ô đang trỏ
+    if (hoverC !== null) {
+      ctx.strokeStyle = COL.hover; ctx.lineWidth = 1;
+      const x = (hoverC - originC) * CELL, y = (hoverR - originR) * CELL;
+      ctx.strokeRect(x + 1.5, y + 1.5, CELL - 2, CELL - 2);
+    }
+
+    if (!state) return;
+    const winSet = new Set(state.winLine || []);
+    const s = CELL * 0.32;
+    for (const k in state.cells) {
+      const [r, c] = k.split(",").map(Number);
+      if (c < v.c0 - 1 || c > v.c1 || r < v.r0 - 1 || r > v.r1) continue;
+      const v0 = state.cells[k];
+      const x = (c - originC) * CELL + CELL / 2, y = (r - originR) * CELL + CELL / 2;
+      if (winSet.has(k)) {
+        ctx.fillStyle = COL.win;
+        ctx.fillRect((c - originC) * CELL + 1, (r - originR) * CELL + 1, CELL - 1, CELL - 1);
+      }
+      if (v0 === "X") {
+        ctx.strokeStyle = COL.x; ctx.lineWidth = Math.max(1, CELL / 14);
+        ctx.beginPath();
+        ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s);
+        ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = COL.o; ctx.lineWidth = Math.max(1, CELL / 14);
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (k === state.last) {
+        ctx.strokeStyle = COL.last; ctx.lineWidth = 1;
+        ctx.strokeRect((c - originC) * CELL + 2.5, (r - originR) * CELL + 2.5, CELL - 5, CELL - 5);
+      }
+    }
+  }
+
+  function statusText() {
+    const st = state.seatStatus;
+    const bothActive = st.X === "active" && st.O === "active";
+
+    if (!seat) {
+      return bothActive
+        ? "Phòng đã đủ 2 người. Bạn đang xem."
+        : "Bạn đang xem. Sẽ vào chơi khi có chỗ trống.";
+    }
+
+    const opp = seat === "X" ? "O" : "X";
+    if (st[opp] === "empty") return "Chờ bạn bè vào phòng. Gửi link cho họ.";
+    if (st[opp] === "away") return "Đối thủ mất kết nối. Ván tạm dừng, đang chờ họ quay lại...";
+    if (state.winner) return state.winner === seat ? "Bạn thắng." : "Bạn thua.";
+    return state.turn === seat ? "Lượt của bạn." : "Chờ đối thủ...";
+  }
+
+  function render() {
+    if (!state) { draw(); return; }
+    promptEl.textContent = statusText();
+    scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}`;
+
+    const canRematch = !!(seat && state.winner && state.seatStatus.X === "active" && state.seatStatus.O === "active");
+    againBtn.classList.toggle("off", !canRematch);
+    againBtn.dataset.enabled = canRematch ? "1" : "0";
+    draw();
+
+    // Lần đầu có trạng thái, đưa gốc (0,0) vào giữa màn hình
+    if (!centered) {
+      centered = true;
+      originC = -(cv.width / CELL) / 2;
+      originR = -(cv.height / CELL) / 2;
+      draw();
+    }
+  }
+
+  // ----- Zoom và kéo bàn kiểu AutoCAD -----
   function setZoom(newCell, ax, ay) {
-    newCell = Math.max(MIN_CELL, Math.min(MAX_CELL, Math.round(newCell)));
+    newCell = Math.max(MIN_CELL, Math.min(MAX_CELL, newCell));
     if (newCell === CELL) return;
-    const oldOffX = cv.offsetLeft, oldOffY = cv.offsetTop;
-    const worldX = (scroller.scrollLeft + ax - oldOffX) / CELL;
-    const worldY = (scroller.scrollTop + ay - oldOffY) / CELL;
+    // Toạ độ ô dưới điểm (ax, ay) được giữ nguyên sau khi zoom
+    const wc = originC + ax / CELL, wr = originR + ay / CELL;
     CELL = newCell;
-    applySize();
-    scroller.scrollLeft = worldX * CELL + cv.offsetLeft - ax;
-    scroller.scrollTop = worldY * CELL + cv.offsetTop - ay;
+    originC = wc - ax / CELL;
+    originR = wr - ay / CELL;
+    scaleEl.textContent = "Zoom " + Math.round(CELL / BASE_CELL * 100) + "%";
     draw();
   }
 
-  // Lăn chuột trong vùng vẽ để zoom, không cuộn trang của trình duyệt
   scroller.addEventListener("wheel", e => {
     e.preventDefault();
     const rect = scroller.getBoundingClientRect();
@@ -501,13 +625,12 @@
     setZoom(CELL * factor, e.clientX - rect.left, e.clientY - rect.top);
   }, { passive: false });
 
-  // Ctrl + / Ctrl - / Ctrl 0 zoom bàn cờ thay vì zoom trình duyệt
   window.addEventListener("keydown", e => {
     if (!e.ctrlKey) return;
-    const cx = scroller.clientWidth / 2, cy = scroller.clientHeight / 2;
+    const cx = cv.width / 2, cy = cv.height / 2;
     if (e.key === "+" || e.key === "=") { e.preventDefault(); setZoom(CELL * 1.15, cx, cy); }
     else if (e.key === "-") { e.preventDefault(); setZoom(CELL / 1.15, cx, cy); }
-    else if (e.key === "0") { e.preventDefault(); setZoom(20, cx, cy); }
+    else if (e.key === "0") { e.preventDefault(); setZoom(BASE_CELL, cx, cy); }
   });
 
   // Giữ chuột giữa rồi kéo để di chuyển bàn
@@ -515,20 +638,61 @@
   scroller.addEventListener("mousedown", e => {
     if (e.button !== 1) return;
     e.preventDefault();
-    panning = { x: e.clientX, y: e.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop };
+    panning = { x: e.clientX, y: e.clientY, c: originC, r: originR };
   });
   window.addEventListener("mousemove", e => {
     if (!panning) return;
-    scroller.scrollLeft = panning.sl - (e.clientX - panning.x);
-    scroller.scrollTop = panning.st - (e.clientY - panning.y);
+    originC = panning.c - (e.clientX - panning.x) / CELL;
+    originR = panning.r - (e.clientY - panning.y) / CELL;
+    draw();
   });
   window.addEventListener("mouseup", e => { if (e.button === 1) panning = null; });
   scroller.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); });
 
-  // Vẽ lại khi đổi kích thước cửa sổ, để bàn không bị trống
+  // Vẽ lại khi đổi kích thước cửa sổ
   window.addEventListener("resize", () => draw());
   new ResizeObserver(() => draw()).observe(scroller);
-  log("Lăn chuột để zoom. Giữ chuột giữa để kéo bàn.");
+
+  // ----- Chuột trên bàn -----
+  cv.addEventListener("mousemove", e => {
+    const r = cv.getBoundingClientRect();
+    hoverC = Math.floor(originC + (e.clientX - r.left) / CELL);
+    hoverR = Math.floor(originR + (e.clientY - r.top) / CELL);
+    coordEl.textContent = `X: ${hoverC}, Y: ${hoverR}`;
+    draw();
+  });
+  cv.addEventListener("mouseleave", () => {
+    hoverC = null; hoverR = null;
+    coordEl.textContent = "X: --, Y: --";
+    draw();
+  });
+  cv.addEventListener("click", () => {
+    if (hoverC === null || !state) return;
+    if (!seat) { log("Bạn đang xem, không có chỗ để đánh."); return; }
+    if (state.seatStatus.X !== "active" || state.seatStatus.O !== "active") {
+      log("Chưa đủ 2 người chơi.");
+      return;
+    }
+    if (state.winner) return;
+    if (state.turn !== seat) { log("Chưa đến lượt bạn."); return; }
+    const k = hoverC + "," + hoverR;
+    if (state.cells[k]) { log("Ô này đã có quân."); return; }
+    log(`Đặt ${seat} tại (${hoverC}, ${hoverR})`);
+    socket.emit("move", { r: hoverR, c: hoverC });
+  });
+
+  // ----- Nút -----
+  againBtn.addEventListener("click", () => {
+    if (againBtn.dataset.enabled === "1") socket.emit("rematch");
+  });
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      log("Đã sao chép link vào clipboard.");
+    } catch (e) { log("Không sao chép được link."); }
+  });
+
+  log("Lăn chuột để zoom. Giữ chuột giữa để kéo bàn. Bàn không có giới hạn.");
 
   // ----- Hộp chọn phòng -----
   function openLobby() {
@@ -584,133 +748,6 @@
     localStorage.setItem("caro-name", name);
     pidEl.textContent = "ID: " + playerId() + "  ·  " + name;
     if (room && socket.connected) socket.emit("join", { room, token, name });
-  });
-
-  function draw() {
-    ctx.fillStyle = COL.bg;
-    ctx.fillRect(0, 0, cv.width, cv.height);
-
-    ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 0; i <= N; i++) {
-      const p = i * CELL + 0.5;
-      ctx.moveTo(p, 0); ctx.lineTo(p, N * CELL);
-      ctx.moveTo(0, p); ctx.lineTo(N * CELL, p);
-    }
-    ctx.stroke();
-
-    if (hover >= 0) {
-      const r = Math.floor(hover / N), c = hover % N;
-      ctx.strokeStyle = COL.hover; ctx.lineWidth = 1;
-      ctx.strokeRect(c * CELL + 1.5, r * CELL + 1.5, CELL - 2, CELL - 2);
-    }
-
-    if (!state) return;
-    const winSet = new Set(state.winLine || []);
-    const s = CELL * 0.32;
-    for (let i = 0; i < SIZE; i++) {
-      const v = state.board[i];
-      if (!v) continue;
-      const r = Math.floor(i / N), c = i % N;
-      const x = c * CELL + CELL / 2, y = r * CELL + CELL / 2;
-      if (winSet.has(i)) {
-        ctx.fillStyle = COL.win;
-        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
-      }
-      if (v === "X") {
-        ctx.strokeStyle = COL.x; ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s);
-        ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s);
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = COL.o; ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.arc(x, y, s, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      if (i === state.last) {
-        ctx.strokeStyle = COL.last; ctx.lineWidth = 1;
-        ctx.strokeRect(c * CELL + 2.5, r * CELL + 2.5, CELL - 5, CELL - 5);
-      }
-    }
-  }
-
-  function statusText() {
-    const st = state.seatStatus;
-    const bothActive = st.X === "active" && st.O === "active";
-
-    if (!seat) {
-      return bothActive
-        ? "Phòng đã đủ 2 người. Bạn đang xem."
-        : "Bạn đang xem. Sẽ vào chơi khi có chỗ trống.";
-    }
-
-    const opp = seat === "X" ? "O" : "X";
-    if (st[opp] === "empty") return "Chờ bạn bè vào phòng. Gửi link cho họ.";
-    if (st[opp] === "away") return "Đối thủ mất kết nối. Ván tạm dừng, đang chờ họ quay lại...";
-    if (state.winner === "draw") return "Hòa.";
-    if (state.winner) return state.winner === seat ? "Bạn thắng." : "Bạn thua.";
-    return state.turn === seat ? "Lượt của bạn." : "Chờ đối thủ...";
-  }
-
-  function render() {
-    if (!state) { draw(); return; }
-    promptEl.textContent = statusText();
-    scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}  ·  Hòa ${state.draws}`;
-
-    const canRematch = !!(seat && state.winner && state.seatStatus.X === "active" && state.seatStatus.O === "active");
-    againBtn.classList.toggle("off", !canRematch);
-    againBtn.dataset.enabled = canRematch ? "1" : "0";
-    draw();
-
-    if (!centered) {
-      centered = true;
-      requestAnimationFrame(() => {
-        scroller.scrollLeft = (cv.width - scroller.clientWidth) / 2;
-        scroller.scrollTop = (cv.height - scroller.clientHeight) / 2;
-      });
-    }
-  }
-
-  cv.addEventListener("mousemove", e => {
-    const r = cv.getBoundingClientRect();
-    const c = Math.floor((e.clientX - r.left) / CELL);
-    const rr = Math.floor((e.clientY - r.top) / CELL);
-    if (c < 0 || c >= N || rr < 0 || rr >= N) {
-      hover = -1; coordEl.textContent = "X: --, Y: --";
-    } else {
-      hover = rr * N + c;
-      coordEl.textContent = `X: ${c + 1}, Y: ${rr + 1}`;
-    }
-    draw();
-  });
-  cv.addEventListener("mouseleave", () => {
-    hover = -1; coordEl.textContent = "X: --, Y: --"; draw();
-  });
-  cv.addEventListener("click", () => {
-    if (hover < 0 || !state) return;
-    if (!seat) { log("Bạn đang xem, không có chỗ để đánh."); return; }
-    if (state.seatStatus.X !== "active" || state.seatStatus.O !== "active") {
-      log("Chưa đủ 2 người chơi.");
-      return;
-    }
-    if (state.winner) return;
-    if (state.turn !== seat) { log("Chưa đến lượt bạn."); return; }
-    if (state.board[hover]) { log("Ô này đã có quân."); return; }
-    const row = Math.floor(hover / N) + 1, col = (hover % N) + 1;
-    log(`Đặt ${seat} tại (${col}, ${row})`);
-    socket.emit("move", hover);
-  });
-
-  againBtn.addEventListener("click", () => {
-    if (againBtn.dataset.enabled === "1") socket.emit("rematch");
-  });
-  copyBtn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(location.href);
-      log("Đã sao chép link vào clipboard.");
-    } catch (e) { log("Không sao chép được link."); }
   });
 
   draw();
