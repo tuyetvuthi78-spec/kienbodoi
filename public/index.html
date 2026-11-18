@@ -380,6 +380,8 @@
     <div class="panel">
       <div class="panel-body">
         <div class="big act" id="lobby"><div class="ico">⌂</div>Phòng</div>
+        <div class="big act" id="gotoLast"><div class="ico">◎</div>Nước cuối</div>
+        <div class="big act" id="fitAll"><div class="ico">⤢</div>Vừa bàn</div>
       </div>
       <div class="ptitle">View ▾</div>
     </div>
@@ -440,7 +442,7 @@
   const scaleEl = $("scale"), pidEl = $("pid");
 
   const COL = { bg: "#212830", grid: "#2c3540", x: "#e8e8e8", o: "#e8c547",
-                hover: "#7f8c99", win: "rgba(255,255,255,0.10)", last: "#ffffff" };
+                hover: "#7f8c99", win: "rgba(255,255,255,0.10)", last: "#ff5c5c" };
   const BASE_CELL = 20;
   const MIN_CELL = 6, MAX_CELL = 48;
 
@@ -450,6 +452,7 @@
   let hoverC = null, hoverR = null;
   let state = null, seat = null;
   let centered = false;
+  let lastSeen = null;
 
   // Mã phòng lấy từ phần sau dấu # của link. Không có thì mở danh sách phòng.
   let room = location.hash.slice(1).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
@@ -563,7 +566,7 @@
         ctx.stroke();
       }
       if (k === state.last) {
-        ctx.strokeStyle = COL.last; ctx.lineWidth = 1;
+        ctx.strokeStyle = COL.last; ctx.lineWidth = 2;
         ctx.strokeRect((c - originC) * CELL + 2.5, (r - originR) * CELL + 2.5, CELL - 5, CELL - 5);
       }
     }
@@ -588,6 +591,17 @@
 
   function render() {
     if (!state) { draw(); return; }
+    // Khi đối thủ vừa đánh, đưa màn hình tới đúng ô đó để không phải tìm
+    if (state.last && state.last !== lastSeen) {
+      lastSeen = state.last;
+      const mover = state.cells[state.last];
+      if (mover && mover !== seat) {
+        const [r, c] = state.last.split(",").map(Number);
+        centered = true;
+        centerOn(c, r);
+        log(`Đối thủ đánh tại (${c}, ${r})`);
+      }
+    }
     promptEl.textContent = statusText();
     scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}`;
 
@@ -653,6 +667,37 @@
   window.addEventListener("resize", () => draw());
   new ResizeObserver(() => draw()).observe(scroller);
 
+  // Đưa ô (c, r) vào giữa màn hình
+  function centerOn(c, r) {
+    originC = c - (cv.width / CELL) / 2 + 0.5;
+    originR = r - (cv.height / CELL) / 2 + 0.5;
+    draw();
+  }
+
+  function gotoLast() {
+    if (!state || !state.last) { log("Chưa có nước đi nào."); return; }
+    const [r, c] = state.last.split(",").map(Number);
+    centerOn(c, r);
+  }
+
+  // Thu phóng để thấy toàn bộ quân cờ đã đánh
+  function fitAll() {
+    if (!state) return;
+    const keys = Object.keys(state.cells);
+    if (!keys.length) { centerOn(0, 0); return; }
+    let minC = Infinity, maxC = -Infinity, minR = Infinity, maxR = -Infinity;
+    for (const k of keys) {
+      const [r, c] = k.split(",").map(Number);
+      minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+      minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+    }
+    const spanC = maxC - minC + 5, spanR = maxR - minR + 5;
+    const fit = Math.min(cv.width / spanC, cv.height / spanR);
+    CELL = Math.max(MIN_CELL, Math.min(MAX_CELL, Math.floor(fit)));
+    scaleEl.textContent = "Zoom " + Math.round(CELL / BASE_CELL * 100) + "%";
+    centerOn((minC + maxC) / 2, (minR + maxR) / 2);
+  }
+
   // ----- Chuột trên bàn -----
   cv.addEventListener("mousemove", e => {
     const r = cv.getBoundingClientRect();
@@ -675,7 +720,7 @@
     }
     if (state.winner) return;
     if (state.turn !== seat) { log("Chưa đến lượt bạn."); return; }
-    const k = hoverC + "," + hoverR;
+    const k = hoverR + "," + hoverC;
     if (state.cells[k]) { log("Ô này đã có quân."); return; }
     log(`Đặt ${seat} tại (${hoverC}, ${hoverR})`);
     socket.emit("move", { r: hoverR, c: hoverC });
@@ -683,7 +728,9 @@
 
   // ----- Nút -----
   againBtn.addEventListener("click", () => {
-    if (againBtn.dataset.enabled === "1") socket.emit("rematch");
+    if (againBtn.dataset.enabled !== "1") return;
+    if (!confirm("Bắt đầu ván mới? Bàn hiện tại sẽ bị xoá.")) return;
+    socket.emit("rematch");
   });
   copyBtn.addEventListener("click", async () => {
     try {
@@ -733,6 +780,8 @@
     location.reload();
   }
 
+  $("gotoLast").addEventListener("click", gotoLast);
+  $("fitAll").addEventListener("click", fitAll);
   $("lobby").addEventListener("click", openLobby);
   $("lclose").addEventListener("click", closeLobby);
   $("lrefresh").addEventListener("click", requestList);
