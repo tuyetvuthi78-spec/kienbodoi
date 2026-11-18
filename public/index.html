@@ -198,6 +198,43 @@
   .lobby .lrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #3a3a3a; }
   .lobby .lempty { color: #8c8c8c; padding: 10px 0; }
 </style>
+  <style>
+    /* Màu và giao diện giống AutoCAD 2024 */
+    body { background: #1f2429; }
+    .titlebar { background: #1f2429; border-bottom-color: #14181c; }
+    .title { color: #e6edf3; }
+    .rtabs { background: #1f2429; }
+    .rtab { color: #c9d1d9; }
+    .rtab.active { background: #2f363e; color: #ffffff; border-color: #3d4650 #3d4650 #2f363e; }
+    .ribbon { background: #2f363e; border-bottom-color: #14181c; }
+    .panel { border-right-color: #232a31; }
+    .sep { background: #3d4650; }
+    .ptitle { color: #9aa5b1; }
+    .big, .small { color: #e6edf3; }
+    .big .ico, .small .ico { color: #9ecbff; }
+    .big.act:hover:not(.off) { background: #3d4650; border-color: #4b5663; }
+    .dd { background: #1f2429; border-color: #3d4650; color: #e6edf3; }
+    .doctabs { background: #1f2429; border-bottom-color: #14181c; }
+    .doc { background: #2a3139; color: #aab4bf; border-top-color: #3d4650; }
+    .doc.active { background: #2f363e; color: #ffffff; border-top-color: #4a9eff; font-weight: 600; }
+    .plus { color: #aab4bf; }
+    .vp { background: #232a31; }
+    .cmd { background: #1f2429; border-top-color: #14181c; }
+    .cmd .log div { color: #9aa5b1; }
+    .cmd .prompt .lbl { color: #e6edf3; }
+    .statusbar { background: #1f2429; border-top-color: #14181c; }
+    .sbtab { background: #2a3139; border-color: #3d4650; color: #aab4bf; }
+    .sbtab.active { background: #3d4650; color: #ffffff; }
+    .tog.on { background: #3d4650; border-color: #4b5663; }
+    .dd2 { display: flex; align-items: center; gap: 6px; background: #1f2429; border: 1px solid #3d4650;
+      color: #e6edf3; padding: 2px 6px; min-width: 150px; font-size: 11px; height: 20px; }
+    .sw { width: 12px; height: 12px; display: inline-block; border: 1px solid #8a96a3; }
+    .ln { width: 44px; height: 0; border-top: 1px solid #e6edf3; display: inline-block; }
+    .ln2 { border-top-style: dashed; }
+    .row-ic { display: flex; gap: 2px; }
+    .row-ic .small { padding: 1px 2px; }
+    .col .dd { min-width: 150px; }
+  </style>
 </head>
 <body>
 
@@ -390,7 +427,7 @@
   <!-- Document tabs -->
   <div class="doctabs">
     <div class="doc">Start</div>
-    <div class="doc active">Drawing2* <span>✕</span></div>
+    <div class="doc active" id="docName">Drawing2* <span>✕</span></div>
     <div class="plus">+</div>
   </div>
 
@@ -432,6 +469,217 @@
     <div class="scorebox" id="score"></div>
   </div>
 
+<script>
+// Icon ribbon vẽ bằng SVG, chọn theo tên nhãn bên cạnh icon
+(() => {
+  const S = inner => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="100%" height="100%">${inner}</svg>`;
+  const ICONS = {
+    Line: S('<path d="M4 20L20 4"/><circle cx="4" cy="20" r="1.6"/><circle cx="20" cy="4" r="1.6"/>'),
+    Polyline: S('<path d="M3 17L8 9L13 15L21 5"/>'),
+    Circle: S('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="0.8"/>'),
+    Arc: S('<path d="M4 18A12 12 0 0 1 20 6"/>'),
+    Rectangle: S('<rect x="3" y="6" width="18" height="12"/>'),
+    Ellipse: S('<ellipse cx="12" cy="12" rx="9" ry="5.5"/>'),
+    Hatch: S('<rect x="3" y="3" width="18" height="18"/><path d="M3 12L12 3M3 21L21 3M12 21L21 12"/>'),
+    Move: S('<path d="M12 2V22M2 12H22M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/>'),
+    Copy: S('<rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4V16H8"/>'),
+    Stretch: S('<rect x="2" y="6" width="6" height="12" stroke-dasharray="2 2"/><rect x="16" y="6" width="6" height="12"/><path d="M8 12H16"/>'),
+    Rotate: S('<path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M19 4v4h-4"/>'),
+    Mirror: S('<path d="M12 3V21" stroke-dasharray="2 2"/><path d="M3 19L10 6V19Z"/><path d="M21 19L14 6V19Z"/>'),
+    Scale: S('<rect x="3" y="14" width="7" height="7"/><rect x="13" y="3" width="8" height="8"/><path d="M10 14L14 11"/>'),
+    Trim: S('<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 16L17 4M16 16L7 4"/>'),
+    Fillet: S('<path d="M4 20V10A10 10 0 0 1 14 20"/>'),
+    Array: S('<rect x="3" y="3" width="4" height="4"/><rect x="10" y="3" width="4" height="4"/><rect x="17" y="3" width="4" height="4"/><rect x="3" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="17" y="10" width="4" height="4"/><rect x="3" y="17" width="4" height="4"/><rect x="10" y="17" width="4" height="4"/><rect x="17" y="17" width="4" height="4"/>'),
+    Text: S('<path d="M5 20L12 4L19 20M8 14H16"/>'),
+    Dimension: S('<path d="M3 12H21M3 7V17M21 7V17"/><path d="M3 12l3-2M3 12l3 2M21 12l-3-2M21 12l-3 2"/>'),
+    Linear: S('<path d="M4 4V20M20 4V20M4 12H20"/><path d="M4 12l3-2M4 12l3 2M20 12l-3-2M20 12l-3 2"/>'),
+    Leader: S('<path d="M4 20L12 12H20"/><circle cx="4" cy="20" r="1.6"/>'),
+    Table: S('<rect x="3" y="4" width="18" height="16"/><path d="M3 9H21M3 14H21M9 4V20M15 4V20"/>'),
+    LayerProperties: S('<path d="M12 3L21 8L12 13L3 8Z"/><path d="M3 13L12 18L21 13"/><path d="M3 17L12 22L21 17"/>'),
+    MakeCurrent: S('<circle cx="12" cy="12" r="4"/><path d="M12 2V5M12 19V22M2 12H5M19 12H22"/>'),
+    MatchLayer: S('<path d="M4 8H14M4 12H14M4 16H14"/><path d="M16 6L20 10L13 17H9V13Z"/>'),
+    Insert: S('<rect x="3" y="3" width="18" height="18"/><path d="M12 8V16M8 12H16"/>'),
+    Create: S('<path d="M4 20L8 16L19 5L21 7L10 18Z"/><path d="M4 20H9"/>'),
+    Edit: S('<path d="M4 20L8 16L19 5L21 7L10 18Z"/><path d="M4 20H9"/>'),
+    EditAttributes: S('<path d="M4 20L8 16L15 9L17 11L10 18Z"/><path d="M18 14H22M18 18H22"/>'),
+    MatchProperties: S('<path d="M4 20L10 14"/><path d="M12 4L20 12L15 17L7 9Z"/>'),
+    Group: S('<rect x="3" y="3" width="18" height="18" stroke-dasharray="2 2"/><rect x="7" y="7" width="10" height="10"/>'),
+    Measure: S('<path d="M3 17L17 3L21 7L7 21Z"/><path d="M7 13L9 15M10 10L12 12M13 7L15 9"/>'),
+    CopyLink: S('<rect x="5" y="4" width="14" height="17"/><rect x="9" y="2" width="6" height="4"/><path d="M9 11H15M9 15H15"/>'),
+    NewGame: S('<path d="M4 12A8 8 0 1 0 6.3 6.3"/><path d="M4 4V9H9"/>'),
+    Rooms: S('<path d="M4 11L12 4L20 11V20H4Z"/><path d="M10 20V14H14V20"/>'),
+    LastMove: S('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>'),
+    ZoomExtents: S('<path d="M4 9V4H9M15 4H20V9M20 15V20H15M9 20H4V15"/>'),
+    Paste: S('<rect x="5" y="4" width="14" height="17"/><rect x="9" y="2" width="6" height="4"/>'),
+    Base: S('<path d="M3 20H21M5 20V8L12 3L19 8V20"/>'),
+    Cut: S('<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 8L20 18M8 16L20 6"/>'),
+    CopyClip: S('<rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4V16H8"/>'),
+    GroupEdit: S('<rect x="3" y="3" width="18" height="18" stroke-dasharray="2 2"/><path d="M9 15L15 9"/>'),
+    GroupAdd: S('<rect x="3" y="3" width="18" height="18" stroke-dasharray="2 2"/><path d="M12 8V16M8 12H16"/>'),
+    GroupSel: S('<rect x="3" y="3" width="18" height="18" stroke-dasharray="2 2"/><path d="M9 9L16 13L13 14L11 17Z"/>'),
+    ListProps: S('<path d="M4 6H20M4 12H20M4 18H20"/>'),
+    Id: S('<circle cx="12" cy="12" r="8"/><path d="M12 8V13M12 16V16.5"/>'),
+    Area: S('<path d="M4 20V4H20V20Z" stroke-dasharray="2 2"/><path d="M4 12H12V20"/>'),
+    LayerBulb: S('<circle cx="12" cy="10" r="5"/><path d="M10 16H14M10 19H14"/>'),
+    LayerSun: S('<circle cx="12" cy="12" r="4"/><path d="M12 2V5M12 19V22M2 12H5M19 12H22M5 5L7 7M17 17L19 19M5 19L7 17M17 7L19 5"/>'),
+    LayerLock: S('<rect x="5" y="11" width="14" height="10"/><path d="M8 11V7A4 4 0 0 1 16 7V11"/>'),
+    LayerSnow: S('<path d="M12 3V21M4 7.5L20 16.5M4 16.5L20 7.5"/>'),
+    LayerColor: S('<rect x="5" y="5" width="14" height="14" fill="currentColor"/>'),
+    LayerStack: S('<path d="M12 3L21 8L12 13L3 8Z"/><path d="M3 13L12 18L21 13"/>'),
+  };
+
+  // Nhãn là chữ cái của phần chữ, bỏ icon và khoảng trắng
+  function labelOf(el) {
+    const c = el.cloneNode(true);
+    c.querySelectorAll(".ico").forEach(n => n.remove());
+    return c.textContent.replace(/[^A-Za-z]/g, "");
+  }
+
+  // Bố cục ribbon giống bảng mẫu AutoCAD. Nhóm Game chứa các chức năng của trò chơi.
+  const RIBBON = `
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Line</div>
+    <div class="big"><span class="ico"></span>Polyline</div>
+    <div class="big"><span class="ico"></span>Circle ▾</div>
+    <div class="big"><span class="ico"></span>Arc ▾</div>
+    <div class="col">
+      <div class="small"><span class="ico"></span>Rectangle ▾</div>
+      <div class="small"><span class="ico"></span>Ellipse ▾</div>
+      <div class="small"><span class="ico"></span>Hatch ▾</div>
+    </div>
+    <div class="ptitle">Draw ▾</div>
+  </div></div>
+  <div class="panel"><div class="panel-body">
+    <div class="col">
+      <div class="small"><span class="ico"></span>Move</div>
+      <div class="small"><span class="ico"></span>Copy</div>
+      <div class="small"><span class="ico"></span>Stretch</div>
+    </div>
+    <div class="col">
+      <div class="small"><span class="ico"></span>Rotate</div>
+      <div class="small"><span class="ico"></span>Mirror</div>
+      <div class="small"><span class="ico"></span>Scale</div>
+    </div>
+    <div class="col">
+      <div class="small"><span class="ico"></span>Trim ▾</div>
+      <div class="small"><span class="ico"></span>Fillet ▾</div>
+      <div class="small"><span class="ico"></span>Array ▾</div>
+    </div>
+    <div class="ptitle">Modify ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Text ▾</div>
+    <div class="big"><span class="ico"></span>Dimension ▾</div>
+    <div class="col">
+      <div class="small"><span class="ico"></span>Linear ▾</div>
+      <div class="small"><span class="ico"></span>Leader ▾</div>
+      <div class="small"><span class="ico"></span>Table ▾</div>
+    </div>
+    <div class="ptitle">Annotation ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Layer<br>Properties ▾</div>
+    <div class="col">
+      <div class="dd">0</div>
+      <div class="row-ic">
+        <div class="small" data-icon="LayerBulb"></div>
+        <div class="small" data-icon="LayerSun"></div>
+        <div class="small" data-icon="LayerLock"></div>
+        <div class="small" data-icon="LayerSnow"></div>
+        <div class="small" data-icon="LayerColor"></div>
+      </div>
+      <div class="row-ic">
+        <div class="small" data-icon="LayerStack"></div>
+        <div class="small" data-icon="LayerStack"></div>
+        <div class="small" data-icon="LayerStack"></div>
+        <div class="small" data-icon="LayerStack"></div>
+        <div class="small" data-icon="LayerStack"></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="small"><span class="ico"></span>Make Current</div>
+      <div class="small"><span class="ico"></span>Match Layer</div>
+    </div>
+    <div class="ptitle">Layers ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Insert ▾</div>
+    <div class="col">
+      <div class="small"><span class="ico"></span>Create</div>
+      <div class="small"><span class="ico"></span>Edit</div>
+      <div class="small"><span class="ico"></span>Edit Attributes ▾</div>
+    </div>
+    <div class="ptitle">Block ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Match<br>Properties</div>
+    <div class="col">
+      <div class="dd2"><span class="sw" style="background:#e6edf3"></span>ByLayer</div>
+      <div class="dd2"><span class="ln"></span>ByLayer</div>
+      <div class="dd2"><span class="ln ln2"></span>ByLayer</div>
+    </div>
+    <div class="ptitle">Properties ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Group</div>
+    <div class="col">
+      <div class="small" data-icon="GroupEdit"></div>
+      <div class="small" data-icon="GroupAdd"></div>
+      <div class="small" data-icon="GroupSel"></div>
+    </div>
+    <div class="ptitle">Groups ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Measure ▾</div>
+    <div class="col">
+      <div class="small" data-icon="ListProps"></div>
+      <div class="small" data-icon="Id"></div>
+      <div class="small" data-icon="Area"></div>
+    </div>
+    <div class="ptitle">Utilities ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Paste ▾</div>
+    <div class="col">
+      <div class="small" data-icon="Cut"></div>
+      <div class="small" data-icon="CopyClip"></div>
+    </div>
+    <div class="ptitle">Clipboard ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big"><span class="ico"></span>Base</div>
+    <div class="ptitle">View ▾</div>
+  </div></div>
+  <div class="sep"></div>
+  <div class="panel"><div class="panel-body">
+    <div class="big act off" id="again"><span class="ico"></span>New Game</div>
+    <div class="big act" id="copy"><span class="ico"></span>Copy<br>Link</div>
+    <div class="big act" id="lobby"><span class="ico"></span>Rooms</div>
+    <div class="big act" id="gotoLast"><span class="ico"></span>Last Move</div>
+    <div class="big act" id="fitAll"><span class="ico"></span>Zoom Extents</div>
+    <div class="ptitle">Game ▾</div>
+  </div></div>`;
+  document.querySelector(".ribbon").innerHTML = RIBBON;
+
+  document.querySelectorAll(".big, .small").forEach(el => {
+    const svg = ICONS[el.dataset.icon || labelOf(el)];
+    if (!svg) return;
+    const ico = el.querySelector(".ico");
+    if (ico) { ico.innerHTML = svg; return; }
+    // Mục chỉ có ký tự đơn giản ở đầu, ví dụ "▭ Rectangle"
+    const text = el.textContent.replace(/^[^A-Za-z]+/, "");
+    el.innerHTML = `<span class="ico">${svg}</span>${text}`;
+  });
+})();
+</script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 (() => {
@@ -602,7 +850,10 @@
         log(`Đối thủ đánh tại (${c}, ${r})`);
       }
     }
-    if (state.title) $("titleText").textContent = "Autodesk AutoCAD 2024   ·   " + state.title;
+    if (state.title) {
+      $("titleText").textContent = "Autodesk AutoCAD 2024   ·   " + state.title;
+      $("docName").innerHTML = state.title.replace(/[<>&]/g, "") + " <span>✕</span>";
+    }
     promptEl.textContent = statusText();
     scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}`;
 
