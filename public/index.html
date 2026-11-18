@@ -106,7 +106,7 @@
     overflow: hidden;
   }
   .scroller { position: absolute; inset: 0; overflow: auto; }
-  canvas { display: block; cursor: crosshair; }
+  canvas { display: block; margin: auto; cursor: crosshair; }
   .vlabel {
     position: absolute; top: 6px; left: 8px;
     color: #bdbdbd; font-size: 11px;
@@ -177,6 +177,39 @@
 </head>
 <body>
 
+  <style>
+    .lobby-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      align-items: center; justify-content: center; z-index: 10; }
+    .lobby { background: #2b2b2b; border: 1px solid #4a4a4a; width: min(480px, 92vw);
+      padding: 12px 14px; color: #d4d4d4; font: 12px "Segoe UI", Arial, sans-serif; }
+    .lobby .lhead { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+    .lobby .lhead span { cursor: pointer; color: #bdbdbd; }
+    .lobby .lpid { margin: 8px 0; color: #8c8c8c; }
+    .lobby .lactions, .lobby .lcode { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+    .lobby button { background: #3a3a3a; color: #d4d4d4; border: 1px solid #4a4a4a; padding: 4px 10px; cursor: pointer; font: inherit; }
+    .lobby button:hover { background: #4b4b4b; }
+    .lobby input { background: #1e2227; color: #d4d4d4; border: 1px solid #4a4a4a; padding: 4px 8px; width: 200px; font: inherit; }
+    .lobby .llist { max-height: 300px; overflow: auto; margin-top: 8px; border-top: 1px solid #3a3a3a; }
+    .lobby .lrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #3a3a3a; }
+    .lobby .lempty { color: #8c8c8c; padding: 10px 0; }
+  </style>
+  <div id="lobbyBox" class="lobby-bg">
+    <div class="lobby">
+      <div class="lhead"><strong>Chọn phòng</strong><span id="lclose">✕</span></div>
+      <div class="lpid">ID của bạn: <b id="lpid"></b></div>
+      <div class="lactions">
+        <button id="lcreate">Tạo phòng mới</button>
+        <button id="lrefresh">Làm mới</button>
+        <button id="lrename">Đổi tên</button>
+      </div>
+      <div class="lcode">
+        <input id="lcodeInput" placeholder="Nhập mã phòng" maxlength="40" />
+        <button id="lgo">Vào</button>
+      </div>
+      <div id="lobbyList" class="llist"></div>
+    </div>
+  </div>
+
   <!-- Title bar -->
   <div class="titlebar">
     <div class="logo">A</div>
@@ -187,7 +220,7 @@
     <div class="title">Autodesk AutoCAD 2024 &nbsp; Drawing2.dwg</div>
     <div class="title-right">
       <input class="search" placeholder="Type a keyword or phrase" disabled />
-      <span>cdsrevit008</span>
+      <span id="pid"></span>
       <span class="winbtn">–</span><span class="winbtn">❐</span><span class="winbtn">✕</span>
     </div>
   </div>
@@ -337,7 +370,7 @@
 
     <div class="panel">
       <div class="panel-body">
-        <div class="big"><div class="ico">⬚</div>Base</div>
+        <div class="big act" id="lobby"><div class="ico">⌂</div>Phòng</div>
       </div>
       <div class="ptitle">View ▾</div>
     </div>
@@ -395,18 +428,32 @@
   const logEl = $("log"), promptEl = $("prompt"), coordEl = $("coord");
   const scoreEl = $("score"), againBtn = $("again"), copyBtn = $("copy");
 
-  const N = 50, CELL = 20, SIZE = N * N;
+  const N = 50, SIZE = N * N;
+  let CELL = 20;                 // kích thước một ô (px), thay đổi khi zoom
+  const MIN_CELL = 6, MAX_CELL = 48;
   const COL = { bg: "#212830", grid: "#2c3540", x: "#e8e8e8", o: "#e8c547",
                 hover: "#7f8c99", win: "rgba(255,255,255,0.10)", last: "#ffffff" };
-  cv.width = N * CELL + 1;
-  cv.height = N * CELL + 1;
-
-  // Tên phòng lấy từ phần sau dấu # của link
-  let room = location.hash.slice(1).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
-  if (!room) {
-    room = Math.random().toString(36).slice(2, 8);
-    location.hash = room;
+  function applySize() {
+    cv.width = N * CELL + 1;
+    cv.height = N * CELL + 1;
   }
+  applySize();
+
+  // Mã phòng lấy từ phần sau dấu # của link. Không có thì mở danh sách phòng.
+  let room = location.hash.slice(1).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
+
+  // Mã riêng của trình duyệt, lưu lại để tải lại trang vẫn giữ đúng ghế
+  let token = localStorage.getItem("caro-token");
+  if (!token) {
+    token = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+    localStorage.setItem("caro-token", token);
+  }
+
+  // ID người chơi: 6 ký tự từ mã trình duyệt, giữ nguyên sau mỗi lần tải lại
+  const playerId = () => token.replace(/-/g, "").slice(0, 6).toUpperCase();
+  let name = localStorage.getItem("caro-name") || ("Người chơi " + playerId());
+  const pidEl = $("pid");
+  pidEl.textContent = "ID: " + playerId() + "  ·  " + name;
 
   let state = null, seat = null, hover = -1, centered = false;
 
@@ -419,12 +466,125 @@
 
   const socket = io();
   socket.on("connect", () => {
+    if (!room) { openLobby(); return; }
     log("Đã kết nối phòng " + room + ".");
-    socket.emit("join", room);
+    socket.emit("join", { room, token, name });
   });
   socket.on("disconnect", () => log("Mất kết nối, đang thử lại..."));
-  socket.on("seat", s => { seat = s; render(); });
+  socket.on("seat", s => {
+    seat = s;
+    if (s) log("Bạn là " + s + ".");
+    render();
+  });
   socket.on("state", s => { state = s; render(); });
+
+  // ----- Zoom kiểu AutoCAD -----
+  // Giữ điểm dưới con trỏ đứng yên khi zoom. ax, ay là toạ độ trong vùng vẽ.
+  function setZoom(newCell, ax, ay) {
+    newCell = Math.max(MIN_CELL, Math.min(MAX_CELL, Math.round(newCell)));
+    if (newCell === CELL) return;
+    const oldOffX = cv.offsetLeft, oldOffY = cv.offsetTop;
+    const worldX = (scroller.scrollLeft + ax - oldOffX) / CELL;
+    const worldY = (scroller.scrollTop + ay - oldOffY) / CELL;
+    CELL = newCell;
+    applySize();
+    scroller.scrollLeft = worldX * CELL + cv.offsetLeft - ax;
+    scroller.scrollTop = worldY * CELL + cv.offsetTop - ay;
+    draw();
+  }
+
+  // Lăn chuột trong vùng vẽ để zoom, không cuộn trang của trình duyệt
+  scroller.addEventListener("wheel", e => {
+    e.preventDefault();
+    const rect = scroller.getBoundingClientRect();
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    setZoom(CELL * factor, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  // Ctrl + / Ctrl - / Ctrl 0 zoom bàn cờ thay vì zoom trình duyệt
+  window.addEventListener("keydown", e => {
+    if (!e.ctrlKey) return;
+    const cx = scroller.clientWidth / 2, cy = scroller.clientHeight / 2;
+    if (e.key === "+" || e.key === "=") { e.preventDefault(); setZoom(CELL * 1.15, cx, cy); }
+    else if (e.key === "-") { e.preventDefault(); setZoom(CELL / 1.15, cx, cy); }
+    else if (e.key === "0") { e.preventDefault(); setZoom(20, cx, cy); }
+  });
+
+  // Giữ chuột giữa rồi kéo để di chuyển bàn
+  let panning = null;
+  scroller.addEventListener("mousedown", e => {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    panning = { x: e.clientX, y: e.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop };
+  });
+  window.addEventListener("mousemove", e => {
+    if (!panning) return;
+    scroller.scrollLeft = panning.sl - (e.clientX - panning.x);
+    scroller.scrollTop = panning.st - (e.clientY - panning.y);
+  });
+  window.addEventListener("mouseup", e => { if (e.button === 1) panning = null; });
+  scroller.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); });
+
+  // Vẽ lại khi đổi kích thước cửa sổ, để bàn không bị trống
+  window.addEventListener("resize", () => draw());
+  new ResizeObserver(() => draw()).observe(scroller);
+  log("Lăn chuột để zoom. Giữ chuột giữa để kéo bàn.");
+
+  // ----- Hộp chọn phòng -----
+  function openLobby() {
+    $("lpid").textContent = playerId();
+    $("lobbyBox").style.display = "flex";
+    requestList();
+  }
+  function closeLobby() { $("lobbyBox").style.display = "none"; }
+  function requestList() {
+    if (!socket.connected) return;
+    socket.emit("list", rows => renderLobby(rows));
+  }
+  function renderLobby(rows) {
+    const box = $("lobbyList");
+    box.innerHTML = "";
+    if (!rows.length) {
+      const e = document.createElement("div");
+      e.className = "lempty";
+      e.textContent = "Chưa có phòng nào đang hoạt động. Bấm \"Tạo phòng mới\" để bắt đầu.";
+      box.appendChild(e);
+      return;
+    }
+    rows.forEach(r => {
+      const row = document.createElement("div");
+      row.className = "lrow";
+      const info = document.createElement("span");
+      const who = [r.names.X, r.names.O].filter(Boolean).join(" vs ") || "chưa có ai";
+      info.textContent = `${r.id}  ·  ${r.players}/2 người chơi (${who})  ·  ${r.viewers} trong phòng`;
+      const btn = document.createElement("button");
+      btn.textContent = "Vào";
+      btn.onclick = () => gotoRoom(r.id);
+      row.append(info, btn);
+      box.appendChild(row);
+    });
+  }
+  function gotoRoom(id) {
+    location.hash = id;
+    location.reload();
+  }
+
+  $("lobby").addEventListener("click", openLobby);
+  $("lclose").addEventListener("click", closeLobby);
+  $("lrefresh").addEventListener("click", requestList);
+  $("lcreate").addEventListener("click", () => socket.emit("create", id => gotoRoom(id)));
+  $("lgo").addEventListener("click", () => {
+    const id = $("lcodeInput").value.trim().replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
+    if (id) gotoRoom(id);
+  });
+  $("lrename").addEventListener("click", () => {
+    const n = prompt("Tên của bạn:", name);
+    if (!n) return;
+    name = n.trim().slice(0, 20) || name;
+    localStorage.setItem("caro-name", name);
+    pidEl.textContent = "ID: " + playerId() + "  ·  " + name;
+    if (room && socket.connected) socket.emit("join", { room, token, name });
+  });
 
   function draw() {
     ctx.fillStyle = COL.bg;
@@ -476,19 +636,30 @@
     }
   }
 
+  function statusText() {
+    const st = state.seatStatus;
+    const bothActive = st.X === "active" && st.O === "active";
+
+    if (!seat) {
+      return bothActive
+        ? "Phòng đã đủ 2 người. Bạn đang xem."
+        : "Bạn đang xem. Sẽ vào chơi khi có chỗ trống.";
+    }
+
+    const opp = seat === "X" ? "O" : "X";
+    if (st[opp] === "empty") return "Chờ bạn bè vào phòng. Gửi link cho họ.";
+    if (st[opp] === "away") return "Đối thủ mất kết nối. Ván tạm dừng, đang chờ họ quay lại...";
+    if (state.winner === "draw") return "Hòa.";
+    if (state.winner) return state.winner === seat ? "Bạn thắng." : "Bạn thua.";
+    return state.turn === seat ? "Lượt của bạn." : "Chờ đối thủ...";
+  }
+
   function render() {
     if (!state) { draw(); return; }
-    const seated = (state.seats.X ? 1 : 0) + (state.seats.O ? 1 : 0);
-    let text;
-    if (!seat) text = seated === 2 ? "Phòng đã đủ 2 người. Bạn đang xem." : "Đang vào phòng...";
-    else if (seated < 2) text = "Chờ bạn bè. Gửi link cho họ.";
-    else if (state.winner === "draw") text = "Hòa.";
-    else if (state.winner) text = state.winner === seat ? "Bạn thắng." : "Bạn thua.";
-    else text = state.turn === seat ? "Lượt của bạn." : "Chờ đối thủ...";
-    promptEl.textContent = text;
-
+    promptEl.textContent = statusText();
     scoreEl.textContent = `X ${state.wins.X}  ·  O ${state.wins.O}  ·  Hòa ${state.draws}`;
-    const canRematch = !!(seat && state.winner);
+
+    const canRematch = !!(seat && state.winner && state.seatStatus.X === "active" && state.seatStatus.O === "active");
     againBtn.classList.toggle("off", !canRematch);
     againBtn.dataset.enabled = canRematch ? "1" : "0";
     draw();
@@ -520,6 +691,10 @@
   cv.addEventListener("click", () => {
     if (hover < 0 || !state) return;
     if (!seat) { log("Bạn đang xem, không có chỗ để đánh."); return; }
+    if (state.seatStatus.X !== "active" || state.seatStatus.O !== "active") {
+      log("Chưa đủ 2 người chơi.");
+      return;
+    }
     if (state.winner) return;
     if (state.turn !== seat) { log("Chưa đến lượt bạn."); return; }
     if (state.board[hover]) { log("Ô này đã có quân."); return; }
